@@ -32,6 +32,7 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('-arch', choices=list(ARCHS.keys()), default='mobile',
                         help='select architecture')
+    parser.add_argument('-data', required=True, help='Path to processed data')
     return parser.parse_args()
 
 
@@ -49,13 +50,12 @@ print("sklearn : {}".format(skl.__version__))
 
 # Hyper-parameters / Globals
 PROJ_FOLDER = os.path.dirname(__file__)
-BATCH_SIZE = 512  # tweak to your GPUs capacity
+BATCH_SIZE = 1  # tweak to your GPUs capacity
 IMG_HEIGHT = 224  # ResNetInceptionv2 & Xception like 299, ResNet50/VGG/Inception 224, NASM 331
 IMG_WIDTH = IMG_HEIGHT
 CHANNELS = 3
 DIMS = (IMG_HEIGHT, IMG_WIDTH, CHANNELS)  # blame theano
-EVAL_CSV = 'valid.csv'
-EVAL_DIR = 'data/val'
+EVAL_DIR = join(PROJ_FOLDER, 'data', 'val')
 
 
 def get_keras_model(arch):
@@ -77,18 +77,14 @@ if __name__ == '__main__':
     model.compile(optimizer=Adam(lr=1e-3), loss=binary_crossentropy, metrics=['binary_accuracy'])
 
     # load up our csv with validation factors
-    data_dir = join(PROJ_FOLDER, 'MURA-v1.0')
-    eval_csv = join(data_dir, EVAL_CSV)
-    df = pd.read_csv(eval_csv, names=['img', 'label'], header=None)
-    eval_imgs = df.img.values.tolist()
-    eval_labels = df.label.values.tolist()
     eval_datagen = ImageDataGenerator(rescale=1. / 255)
     eval_generator = eval_datagen.flow_from_directory(
-        EVAL_DIR, class_mode='binary', shuffle=False, target_size=(IMG_HEIGHT, IMG_WIDTH), batch_size=BATCH_SIZE)
+        EVAL_DIR, class_mode='binary', shuffle=True, target_size=(IMG_HEIGHT, IMG_WIDTH), batch_size=BATCH_SIZE)
     n_samples = eval_generator.samples
 
     # Run
-    score, acc = model.evaluate_generator(eval_generator, n_samples / BATCH_SIZE)
+    score, acc = model.evaluate_generator(eval_generator, n_samples / BATCH_SIZE, use_multiprocessing=True,
+                                          verbose=1)
     print(model.metrics_names)
     print('==> Metrics with eval')
     print("loss :{:0.4f} \t Accuracy:{:0.4f}".format(score, acc))

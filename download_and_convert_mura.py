@@ -45,47 +45,35 @@ class ImageString(object):
         return "normal" if ("negative" in self.img_filename) else "abnormal"
 
 
-# processed
-# data
-# ├── train
-# │   ├── abnormal
-# │   └── normal
-# └── val
-#     ├── abnormal
-#     └── normal
-proc_data_dir = join(getcwd(), 'data')
-proc_train_dir = join(proc_data_dir, 'train')
-proc_val_dir = join(proc_data_dir, 'val')
+def process(label_csv, proc_dir):
+    labels = pd.read_csv(label_csv)
+    for img_folder, label in labels.itertuples(index=False):
+        assert ("negative" in img_folder) is (label is 0)
+        for img in os.listdir(img_folder):
+            enc = ImageString(join(img_folder, img))
+            cat_dir = join(proc_dir, enc.normal)
+            if not os.path.exists(cat_dir):
+                os.makedirs(cat_dir)
+            shutil.copy2(enc.img_filename, join(cat_dir, enc.flat_file_name()))
 
-# Data loading code
-orig_data_dir = join(getcwd(), 'MURA-v1.0')
-train_dir = join(orig_data_dir, 'train')
-train_csv = join(orig_data_dir, 'train.csv')
-val_dir = join(orig_data_dir, 'valid')
-val_csv = join(orig_data_dir, 'valid.csv')
-test_dir = join(orig_data_dir, 'test')
-assert isdir(orig_data_dir) and isdir(train_dir) and isdir(val_dir) and isdir(test_dir)
-assert exists(train_csv) and isfile(train_csv) and exists(val_csv) and isfile(val_csv)
 
-df = pd.read_csv(train_csv, names=['img', 'label'], header=None)
-# imgs = df.img.values.tolist()
-# labels = df.label.values.tolist()
-# following datasets/folder.py's weird convention here...
-samples = [tuple(x) for x in df.values]
-for img, label in samples:
-    assert ("negative" in img) is (label is 0)
-    enc = ImageString(img)
-    cat_dir = join(proc_train_dir, enc.normal)
-    if not os.path.exists(cat_dir):
-        os.mkdir(cat_dir)
-    shutil.copy2(enc.img_filename, join(cat_dir, enc.flat_file_name()))
+if __name__ == '__main__':
+    # data
+    # ├── train
+    # │   ├── abnormal
+    # │   └── normal
+    # └── val
+    #     ├── abnormal
+    #     └── normal
+    proj_folder = os.path.dirname(__file__)
 
-df = pd.read_csv(val_csv, names=['img', 'label'], header=None)
-samples = [tuple(x) for x in df.values]
-for img, label in samples:
-    assert ("negative" in img) is (label is 0)
-    enc = ImageString(img)
-    cat_dir = join(proc_val_dir, enc.normal)
-    if not os.path.exists(cat_dir):
-        os.mkdir(cat_dir)
-    shutil.copy2(enc.img_filename, join(cat_dir, enc.flat_file_name()))
+    # Data loading code
+    orig_data_dir = join(getcwd(), 'MURA-v1.1')
+    val_dir = join(orig_data_dir, 'valid')
+    val_img_csv = join(orig_data_dir, 'valid_image_paths.csv')
+    val_label_csv = join(orig_data_dir, 'valid_labeled_studies.csv')
+    assert isdir(orig_data_dir) and isdir(val_dir)
+    assert exists(val_img_csv) and isfile(val_img_csv) and exists(val_label_csv) and isfile(val_label_csv)
+
+    process(label_csv=val_label_csv,
+            proc_dir=join(proj_folder, 'data', 'val'))

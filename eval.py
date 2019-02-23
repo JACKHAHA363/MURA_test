@@ -30,7 +30,7 @@ WEIGHT_PATHS = {'mobile': 'MobileNet.hdf5',
 def get_args():
     """ Get args """
     parser = argparse.ArgumentParser()
-    parser.add_argument('-arch', choices=list(ARCHS.keys()), default='mobile',
+    parser.add_argument('-arch', choices=list(ARCHS.keys()), required=True,
                         help='select architecture')
     parser.add_argument('-data', required=True, help='Path to processed data')
     return parser.parse_args()

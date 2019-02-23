@@ -10,7 +10,7 @@ import pandas as pd
 import sklearn as skl
 import tensorflow as tf
 import argparse
-from keras.applications import NASNetMobile, MobileNetV2, DenseNet169
+from keras.applications import NASNetMobile, MobileNet, DenseNet169
 from keras.layers import Dense, GlobalAveragePooling2D
 from keras.metrics import binary_accuracy, binary_crossentropy
 from keras.models import Model
@@ -19,14 +19,23 @@ from keras.preprocessing.image import ImageDataGenerator
 
 from mura import Mura
 
+ARCHS = {'mobile': MobileNet,
+         'nasnet_mobile': NASNetMobile,
+         'densenet169': DenseNet169}
+WEIGHT_PATHS = {'mobile': 'MobileNet.hdf5',
+                'nasnet_mobile': 'NASNetMobile.hdf5',
+                'densenet169': 'DenseNet169.hdf5'}
+
+
 def get_args():
     """ Get args """
     parser = argparse.ArgumentParser()
-    parser.add_argument('-arch', choices=list(ARCHS.keys()), required=True,
+    parser.add_argument('-arch', choices=list(ARCHS.keys()), default='mobile',
                         help='select architecture')
     return parser.parse_args()
 
 
+ARGS = get_args()
 pd.set_option('display.max_rows', 20)
 pd.set_option('precision', 4)
 np.set_printoptions(precision=4)
@@ -47,12 +56,6 @@ CHANNELS = 3
 DIMS = (IMG_HEIGHT, IMG_WIDTH, CHANNELS)  # blame theano
 EVAL_CSV = 'valid.csv'
 EVAL_DIR = 'data/val'
-ARCHS = {'mobile': MobileNetV2,
-         'nasnet_mobile': NASNetMobile,
-         'densenet169': DenseNet169}
-WEIGHT_PATHS = {'nasnet': 'MobileNet.hdf5',
-                'nasnet_mobile': 'NASNetMobile.hdf5',
-                'densenet169': 'DenseNet169.hdf5'}
 
 
 def get_keras_model(arch):
@@ -67,27 +70,31 @@ def get_keras_model(arch):
     model.load_weights(weight_path)
     return model
 
-# load up our csv with validation factors
-data_dir = join(PROJ_FOLDER, 'MURA-v1.0')
-eval_csv = join(data_dir, EVAL_CSV)
-df = pd.read_csv(eval_csv, names=['img', 'label'], header=None)
-eval_imgs = df.img.values.tolist()
-eval_labels = df.label.values.tolist()
-eval_datagen = ImageDataGenerator(rescale=1. / 255)
-eval_generator = eval_datagen.flow_from_directory(
-    EVAL_DIR, class_mode='binary', shuffle=False, target_size=(IMG_HEIGHT, IMG_WIDTH), batch_size=BATCH_SIZE)
-n_samples = eval_generator.samples
 
-# Load model
-model = get_keras_model(get_args().arch)
-model.compile(optimizer=Adam(lr=1e-3), loss=binary_crossentropy, metrics=['binary_accuracy'])
-score, acc = model.evaluate_generator(eval_generator, n_samples / BATCH_SIZE)
-print(model.metrics_names)
-print('==> Metrics with eval')
-print("loss :{:0.4f} \t Accuracy:{:0.4f}".format(score, acc))
-y_pred = model.predict_generator(eval_generator, n_samples / BATCH_SIZE)
-mura = Mura(eval_generator.filenames, y_true=eval_generator.classes, y_pred=y_pred)
-print('==> Metrics with predict')
-print(mura.metrics())
-print(mura.metrics_by_encounter())
-# print(mura.metrics_by_study_type())
+if __name__ == '__main__':
+    # Load model
+    model = get_keras_model(ARGS.arch)
+    model.compile(optimizer=Adam(lr=1e-3), loss=binary_crossentropy, metrics=['binary_accuracy'])
+
+    # load up our csv with validation factors
+    data_dir = join(PROJ_FOLDER, 'MURA-v1.0')
+    eval_csv = join(data_dir, EVAL_CSV)
+    df = pd.read_csv(eval_csv, names=['img', 'label'], header=None)
+    eval_imgs = df.img.values.tolist()
+    eval_labels = df.label.values.tolist()
+    eval_datagen = ImageDataGenerator(rescale=1. / 255)
+    eval_generator = eval_datagen.flow_from_directory(
+        EVAL_DIR, class_mode='binary', shuffle=False, target_size=(IMG_HEIGHT, IMG_WIDTH), batch_size=BATCH_SIZE)
+    n_samples = eval_generator.samples
+
+    # Run
+    score, acc = model.evaluate_generator(eval_generator, n_samples / BATCH_SIZE)
+    print(model.metrics_names)
+    print('==> Metrics with eval')
+    print("loss :{:0.4f} \t Accuracy:{:0.4f}".format(score, acc))
+    y_pred = model.predict_generator(eval_generator, n_samples / BATCH_SIZE)
+    mura = Mura(eval_generator.filenames, y_true=eval_generator.classes, y_pred=y_pred)
+    print('==> Metrics with predict')
+    print(mura.metrics())
+    print(mura.metrics_by_encounter())
+    # print(mura.metrics_by_study_type())

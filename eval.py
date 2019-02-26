@@ -55,7 +55,7 @@ IMG_HEIGHT = 224  # ResNetInceptionv2 & Xception like 299, ResNet50/VGG/Inceptio
 IMG_WIDTH = IMG_HEIGHT
 CHANNELS = 3
 DIMS = (IMG_HEIGHT, IMG_WIDTH, CHANNELS)  # blame theano
-EVAL_DIR = join(PROJ_FOLDER, 'data', 'val')
+EVAL_DIR = ARGS.data
 
 
 def get_keras_model(arch):
@@ -79,7 +79,7 @@ if __name__ == '__main__':
     # load up our csv with validation factors
     eval_datagen = ImageDataGenerator(rescale=1. / 255)
     eval_generator = eval_datagen.flow_from_directory(
-        EVAL_DIR, class_mode='binary', shuffle=True, target_size=(IMG_HEIGHT, IMG_WIDTH), batch_size=BATCH_SIZE)
+        EVAL_DIR, class_mode='binary', shuffle=False, target_size=(IMG_HEIGHT, IMG_WIDTH), batch_size=BATCH_SIZE)
     n_samples = eval_generator.samples
 
     # Run
